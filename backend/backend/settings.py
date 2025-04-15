@@ -28,7 +28,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -197,3 +196,5 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Configure CORS (no final do arquivo):
 CORS_ALLOW_ALL_ORIGINS = True  # Em produção, restrinja isso!
+
+APPEND_SLASH = False
