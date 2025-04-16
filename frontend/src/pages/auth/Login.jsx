@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { FaSignInAlt, FaLock, FaEnvelope } from 'react-icons/fa';
+import styles from './Auth.module.css';
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -20,70 +22,60 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Acesse sua conta
-        </h2>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {error && (
-            <div className="mb-4 text-sm text-red-600">
-              {error}
-            </div>
-          )}
-          
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                E-mail
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Senha
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">
-                  Esqueceu sua senha?
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-              >
-                Entrar
-              </button>
-            </div>
-          </form>
+    <div className={styles.authContainer}>
+      <div className={styles.authCard}>
+        <div className={styles.authHeader}>
+          <FaSignInAlt className={styles.authIcon} />
+          <h2>Acesse sua conta</h2>
         </div>
+
+        {error && <div className={styles.authError}>{error}</div>}
+
+        <form onSubmit={handleSubmit} className={styles.authForm}>
+          <div className={styles.formGroup}>
+            <label htmlFor="email">
+              <FaEnvelope className={styles.inputIcon} />
+              E-mail
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+            />
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="password">
+              <FaLock className={styles.inputIcon} />
+              Senha
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+            />
+          </div>
+
+          <div className={styles.formFooter}>
+            <Link to="/forgot-password" className={styles.forgotLink}>
+              Esqueceu sua senha?
+            </Link>
+          </div>
+
+          <button type="submit" className={styles.submitButton}>
+            Entrar
+          </button>
+        </form>
+
+        {/* <div className={s tyles.authFooter}>
+          <p>Não tem uma conta? <Link to="/register" className={styles.authLink}>Cadastre-se</Link></p>
+        </div> */}
       </div>
     </div>
   );

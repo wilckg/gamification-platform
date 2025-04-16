@@ -1,0 +1,98 @@
+.header {
+  background: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.headerContainer {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.platformLogo {
+  justify-self: start;
+}
+
+.partnerLogos {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.loginContainer {
+  justify-self: end;
+}
+
+.mainLogo {
+  height: 50px;
+}
+
+.partnerLogo {
+  height: 40px;
+  object-fit: contain;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.partnerLogo:hover {
+  opacity: 1;
+}
+
+.loginButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #0056a3;
+  color: white;
+  padding: 0.6rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.loginButton:hover {
+  background: #003366;
+  transform: translateY(-2px);
+}
+
+.loginIcon {
+  font-size: 1rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .headerContainer {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      padding: 1rem;
+  }
+  
+  .platformLogo,
+  .partnerLogos,
+  .loginContainer {
+      justify-self: center;
+  }
+  
+  .partnerLogos {
+      order: 1;
+      margin: 1rem 0;
+  }
+  
+  .platformLogo {
+      order: 0;
+  }
+  
+  .loginContainer {
+      order: 2;
+  }
+}

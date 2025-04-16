@@ -1,8 +1,8 @@
 # backend/challenges/views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from .models import Challenge, UserChallenge
-from .serializers import ChallengeSerializer, UserChallengeSerializer
+from .models import Challenge, UserChallenge, ChallengeSubmission, Badge, UserBadge
+from .serializers import ChallengeSerializer, UserChallengeSerializer, ChallengeSubmissionSerializer
 from users.models import CustomUser
 
 class ChallengeViewSet(viewsets.ModelViewSet):
@@ -42,6 +42,29 @@ class UserChallengeViewSet(viewsets.ModelViewSet):
         user = self.request.user
         user.points += challenge.points
         user.save()
+
+class ChallengeSubmissionViewSet(viewsets.ModelViewSet):
+    queryset = ChallengeSubmission.objects.all()
+    serializer_class = ChallengeSubmissionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        submission = serializer.save(user=self.request.user)
+        self.check_badges(submission.user)
+
+    def check_badges(self, user):
+        # Lógica para verificar conquistas
+        total_points = user.points
+        badges = Badge.objects.filter(points_required__lte=total_points)
+        
+        for badge in badges:
+            if not UserBadge.objects.filter(user=user, badge=badge).exists():
+                UserBadge.objects.create(user=user, badge=badge)
+
+class RankingView(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.all().order_by('-points')
+    serializer_class = UserSerializer
+    pagination_class = None
 
 class RankingViewSet(viewsets.ViewSet):
     permission_classes = [permissions.AllowAny]
