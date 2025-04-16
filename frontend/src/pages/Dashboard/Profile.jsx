@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { FaTrophy, FaAward, FaUserCircle, FaChevronLeft, FaStar, FaMedal, FaCamera } from 'react-icons/fa';
+import { FaTrophy, FaAward, FaUserCircle, FaChevronLeft, FaStar, FaMedal, FaCamera, FaTimes } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import ProfileDropdown from '../../components/ProfileDropdown/ProfileDropdown';
 import styles from './Dashboard.module.css';
 
 export default function Profile() {
-    // Dados de exemplo - substitua pelos dados reais da sua API
+    // Dados do usuário
     const [user, setUser] = useState({
         name: 'João Silva',
         email: 'joao@exemplo.com',
@@ -31,9 +32,13 @@ export default function Profile() {
         { id: 4, name: 'Otimização', level: 'Ouro', earned: false }
     ];
 
+    // Estados para o avatar
     const [avatarPreview, setAvatarPreview] = useState(null);
-    const fileInputRef = useRef(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isModalClosing, setIsModalClosing] = useState(false);
+    const fileInputRef = useRef(null);
 
     // Carrega os dados do usuário e avatar
     useEffect(() => {
@@ -51,18 +56,54 @@ export default function Profile() {
         loadUserData();
     }, []);
 
+    // Bloqueia escape e scroll quando modal está aberto
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (showPreviewModal && e.key === 'Escape') {
+                e.preventDefault();
+            }
+        };
+
+        if (showPreviewModal) {
+            window.addEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = 'auto';
+        };
+    }, [showPreviewModal]);
+
     const handleAvatarClick = () => {
         fileInputRef.current.click();
     };
 
-    const handleFileChange = async (e) => {
+    const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        setSelectedFile(file);
+
+        // Cria o preview da imagem
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setAvatarPreview(reader.result);
+            setShowPreviewModal(true);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleUploadAvatar = async () => {
+        if (!selectedFile) return;
+
         try {
             setIsLoading(true);
+            
             const formData = new FormData();
-            formData.append('avatar', file);
+            formData.append('avatar', selectedFile);
 
             const response = await api.patch('/user/avatar', formData, {
                 headers: {
@@ -70,19 +111,26 @@ export default function Profile() {
                 }
             });
 
-            // Atualiza a visualização
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-
             setUser(prev => ({ ...prev, avatar: response.data.avatar }));
+            setIsModalClosing(true);
+            setTimeout(() => {
+                setShowPreviewModal(false);
+                setIsModalClosing(false);
+            }, 300);
         } catch (error) {
             console.error('Erro ao atualizar avatar:', error);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleCancel = () => {
+        setIsModalClosing(true);
+        setTimeout(() => {
+            setShowPreviewModal(false);
+            setIsModalClosing(false);
+            setAvatarPreview(user.avatar || null);
+        }, 300);
     };
 
     return (
@@ -93,10 +141,8 @@ export default function Profile() {
                         <FaChevronLeft /> Voltar
                     </Link>
                     <h1 className={styles.logo}>Meu Perfil</h1>
-                    <div className={styles.profileContainer}>
-                        <span className={styles.userName}>{user.name}</span>
-                        <FaUserCircle className={styles.profileIcon} />
-                    </div>
+                    
+                    <ProfileDropdown user={user} />
                 </div>
             </header>
 
@@ -105,6 +151,11 @@ export default function Profile() {
                 <div className={styles.profileSection}>
                     <div className={styles.profileHeader}>
                         <div className={styles.avatarContainer} onClick={handleAvatarClick}>
+                            {isLoading && (
+                                <div className={styles.avatarLoading}>
+                                    <div className={styles.spinner}></div>
+                                </div>
+                            )}
                             {avatarPreview ? (
                                 <img
                                     src={avatarPreview}
@@ -198,6 +249,45 @@ export default function Profile() {
                     </div>
                 </div>
             </main>
+
+            {/* Modal de Preview do Avatar */}
+            {showPreviewModal && (
+                <div className={`${styles.previewModal} ${isModalClosing ? styles.modalClosing : ''}`}>
+                    <div className={styles.previewContent}>
+                        <h3>Confirme seu novo avatar</h3>
+                        <div className={styles.previewImageContainer}>
+                            <img 
+                                src={avatarPreview} 
+                                alt="Preview do avatar" 
+                                className={styles.previewImage}
+                            />
+                        </div>
+                        <p className={styles.previewText}>
+                            Esta imagem substituirá seu avatar atual. Você confirma a alteração?
+                        </p>
+                        <div className={styles.previewActions}>
+                            <button 
+                                onClick={handleCancel}
+                                className={styles.cancelButton}
+                                disabled={isLoading}
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleUploadAvatar}
+                                className={styles.confirmButton}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <div className={styles.spinner}></div>
+                                ) : (
+                                    'Confirmar Avatar'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

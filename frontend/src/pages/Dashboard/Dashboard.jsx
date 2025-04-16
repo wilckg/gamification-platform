@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaTrophy, FaFlag, FaUserCircle, FaChevronDown, FaSignOutAlt } from 'react-icons/fa';
+import ProfileDropdown from '../../components/ProfileDropdown/ProfileDropdown';
 import styles from './Dashboard.module.css';
 
 export default function Dashboard() {
@@ -47,43 +48,7 @@ export default function Dashboard() {
                 <div className={styles.headerContent}>
                     <h1 className={styles.logo}>CodeChallenge</h1>
 
-                    <div className={styles.profileContainer}>
-                        <span className={styles.userName}>{user.name}</span>
-                        <div
-                            className={styles.profileDropdownTrigger}
-                            onClick={() => setIsProfileOpen(!isProfileOpen)}
-                        >
-                            <FaUserCircle className={styles.profileIcon} />
-                            <FaChevronDown className={`${styles.dropdownIcon} ${isProfileOpen ? styles.rotate : ''}`} />
-                        </div>
-
-                        {isProfileOpen && (
-                            <div
-                                className={styles.profileDropdown}
-                                onClick={(e) => e.stopPropagation()} // Impede a propagação do clique
-                            >
-                                <div className={styles.profileInfo}>
-                                    <p className={styles.profileEmail}>{user.email}</p>
-                                    <p className={styles.profilePoints}>Pontos: {user.points}</p>
-                                </div>
-
-                                {/* Botão para o perfil */}
-                                <button
-                                    className={styles.dropdownLink}
-                                    onClick={handleProfileClick}
-                                >
-                                    <FaUserCircle /> Meu Perfil
-                                </button>
-
-                                <button
-                                    className={styles.logoutButton}
-                                    onClick={handleLogout}
-                                >
-                                    <FaSignOutAlt /> Sair
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <ProfileDropdown user={user} />
                 </div>
             </header>
 
