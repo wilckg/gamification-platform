@@ -6,19 +6,29 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 class Challenge(models.Model):
-    EASY = 'E'
-    MEDIUM = 'M'
-    HARD = 'H'
+    TYPE_DESCRIPTION = 'D'
+    TYPE_SINGLE_CHOICE = 'S'
+    TYPE_MULTIPLE_CHOICE = 'M'
+    TYPE_CHOICES = [
+        (TYPE_DESCRIPTION, 'Descrição'),
+        (TYPE_SINGLE_CHOICE, 'Escolha Única'),
+        (TYPE_MULTIPLE_CHOICE, 'Múltipla Escolha'),
+    ]
+    
+    DIFFICULTY_EASY = 'E'
+    DIFFICULTY_MEDIUM = 'M'
+    DIFFICULTY_HARD = 'H'
     DIFFICULTY_CHOICES = [
-        (EASY, 'Easy'),
-        (MEDIUM, 'Medium'),
-        (HARD, 'Hard'),
+        (DIFFICULTY_EASY, 'Easy'),
+        (DIFFICULTY_MEDIUM, 'Medium'),
+        (DIFFICULTY_HARD, 'Hard'),
     ]
     
     title = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField(blank=True, null=True)
     points = models.IntegerField()
     difficulty = models.CharField(max_length=1, choices=DIFFICULTY_CHOICES)
+    challenge_type = models.CharField(max_length=1, choices=TYPE_CHOICES, default=TYPE_DESCRIPTION)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='created_challenges')
@@ -27,11 +37,29 @@ class Challenge(models.Model):
     def __str__(self):
         return self.title
 
+class Question(models.Model):
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['order']
+
+class Option(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='options')
+    text = models.CharField(max_length=255)
+    is_correct = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['order']
+
 class UserChallenge(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user_challenges')
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='challenge_users')
     submission_date = models.DateTimeField(auto_now_add=True)
-    answer = models.TextField()
+    answer = models.TextField(blank=True, null=True)  # Para respostas descritivas
+    selected_options = models.ManyToManyField(Option, blank=True)  # Para respostas de quiz
     is_correct = models.BooleanField(default=False)
     points_awarded = models.BooleanField(default=False)
     

@@ -1,8 +1,8 @@
-# backend/challenges/views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
-from .models import Challenge, UserChallenge, ChallengeSubmission, Badge, UserBadge
-from .serializers import ChallengeSerializer, UserChallengeSerializer, ChallengeSubmissionSerializer
+from rest_framework.decorators import action
+from .models import Challenge, UserChallenge, Question, Option
+from .serializers import ChallengeSerializer, UserChallengeSerializer
 from users.models import CustomUser
 
 class ChallengeViewSet(viewsets.ModelViewSet):
@@ -20,6 +20,65 @@ class UserChallengeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return UserChallenge.objects.filter(user=self.request.user)
     
+    def create(self, request, *args, **kwargs):
+        challenge_id = request.data.get('challenge')
+        try:
+            challenge = Challenge.objects.get(id=challenge_id)
+        except Challenge.DoesNotExist:
+            return Response(
+                {'error': 'Desafio não encontrado.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Verifica se o usuário já respondeu esse desafio
+        if UserChallenge.objects.filter(user=request.user, challenge=challenge).exists():
+            return Response(
+                {'error': 'Você já respondeu este desafio.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Cria a submissão
+        user_challenge = serializer.save(
+            user=request.user,
+            challenge=challenge,
+            is_correct=self.check_answer(challenge, request.data)
+        
+        # Atualiza pontos se correto
+        if user_challenge.is_correct:
+            user = request.user
+            user.points += challenge.points
+            user.save()
+            user_challenge.points_awarded = True
+            user_challenge.save()
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def check_answer(self, challenge, data):
+        if challenge.challenge_type == Challenge.TYPE_DESCRIPTION:
+            # Lógica para verificar resposta descritiva (pode ser manual ou automática)
+            return True  # Implemente sua lógica de verificação
+            
+        elif challenge.challenge_type in [Challenge.TYPE_SINGLE_CHOICE, Challenge.TYPE_MULTIPLE_CHOICE]:
+            selected_option_ids = data.get('selected_options', [])
+            correct_options = Option.objects.filter(
+                question__challenge=challenge,
+                is_correct=True
+            ).values_list('id', flat=True)
+            
+            selected_options_set = set(selected_option_ids)
+            correct_options_set = set(correct_options)
+            
+            if challenge.challenge_type == Challenge.TYPE_SINGLE_CHOICE:
+                return len(selected_options_set) == 1 and selected_options_set.issubset(correct_options_set)
+            else:
+                return selected_options_set == correct_options_set
+        
+        return False
+
     def perform_create(self, serializer):
         challenge_id = self.request.data.get('challenge')
         challenge = Challenge.objects.get(id=challenge_id)
