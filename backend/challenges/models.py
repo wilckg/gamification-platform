@@ -1,16 +1,31 @@
-# backend/challenges/models.py
 from django.db import models
 from users.models import CustomUser
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+class Track(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    icon = models.CharField(max_length=50, blank=True)  # Para ícones (ex: 'FaPython')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    order = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['order']
+    
+    def __str__(self):
+        return self.title
+
 class Challenge(models.Model):
     TYPE_DESCRIPTION = 'D'
+    TYPE_CODE = 'C'
     TYPE_SINGLE_CHOICE = 'S'
     TYPE_MULTIPLE_CHOICE = 'M'
     TYPE_CHOICES = [
         (TYPE_DESCRIPTION, 'Descrição'),
+        (TYPE_CODE, 'Código'),
         (TYPE_SINGLE_CHOICE, 'Escolha Única'),
         (TYPE_MULTIPLE_CHOICE, 'Múltipla Escolha'),
     ]
@@ -19,23 +34,29 @@ class Challenge(models.Model):
     DIFFICULTY_MEDIUM = 'M'
     DIFFICULTY_HARD = 'H'
     DIFFICULTY_CHOICES = [
-        (DIFFICULTY_EASY, 'Easy'),
-        (DIFFICULTY_MEDIUM, 'Medium'),
-        (DIFFICULTY_HARD, 'Hard'),
+        (DIFFICULTY_EASY, 'Fácil'),
+        (DIFFICULTY_MEDIUM, 'Médio'),
+        (DIFFICULTY_HARD, 'Difícil'),
     ]
     
+    track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name='challenges')
+    # track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name='challenges', null=True)  # Temporário
     title = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField()
     points = models.IntegerField()
     difficulty = models.CharField(max_length=1, choices=DIFFICULTY_CHOICES)
-    challenge_type = models.CharField(max_length=1, choices=TYPE_CHOICES, default=TYPE_DESCRIPTION)
+    challenge_type = models.CharField(max_length=1, choices=TYPE_CHOICES)
+    language = models.CharField(max_length=50, blank=True, null=True)  # Para desafios de código
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='created_challenges')
     is_active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['order']
     
     def __str__(self):
-        return self.title
+        return f"{self.track.title} - {self.title}"
 
 class Question(models.Model):
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='questions')
@@ -47,7 +68,7 @@ class Question(models.Model):
 
 class Option(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='options')
-    text = models.CharField(max_length=255)
+    text = models.TextField()
     is_correct = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
     
@@ -55,38 +76,26 @@ class Option(models.Model):
         ordering = ['order']
 
 class UserChallenge(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user_challenges')
-    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='challenge_users')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='challenge_submissions')
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='user_submissions')
     submission_date = models.DateTimeField(auto_now_add=True)
     answer = models.TextField(blank=True, null=True)  # Para respostas descritivas
+    code = models.TextField(blank=True, null=True)  # Para respostas de código
     selected_options = models.ManyToManyField(Option, blank=True)  # Para respostas de quiz
     is_correct = models.BooleanField(default=False)
     points_awarded = models.BooleanField(default=False)
+    feedback = models.TextField(blank=True, null=True)  # Feedback para respostas de código
     
     class Meta:
         unique_together = ('user', 'challenge')
-        
-class Badge(models.Model):
-    name = models.CharField(max_length=100)
-    description = models.TextField()
-    icon = models.ImageField(upload_to='badges/')
-    points_required = models.IntegerField(default=0)
+        ordering = ['-submission_date']
 
-class UserBadge(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    badge = models.ForeignKey(Badge, on_delete=models.CASCADE)
-    date_awarded = models.DateTimeField(auto_now_add=True)
-
-class ChallengeSubmission(models.Model):
-    STATUS_CHOICES = [
-        ('P', 'Pending'),
-        ('A', 'Approved'),
-        ('R', 'Rejected')
-    ]
+class UserTrackProgress(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='track_progress')
+    track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name='user_progress')
+    completed_challenges = models.ManyToManyField(Challenge, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE)
-    answer = models.TextField()
-    status = models.CharField(max_length=1, choices=STATUS_CHOICES, default='P')
-    submitted_at = models.DateTimeField(auto_now_add=True)
-    points_awarded = models.IntegerField(default=0)
+    class Meta:
+        unique_together = ('user', 'track')

@@ -196,6 +196,7 @@
     border-radius: 12px;
     padding: 2rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    color: #2c3e50;
 }
 
 .challengesList h2, .rankingList h2 {
@@ -661,6 +662,77 @@
     height: 16px;
     margin: 0 auto;
 }
+
+/* Track Card */
+.tracksList {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  }
+  
+  .trackCard {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .trackCard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 86, 163, 0.1);
+  }
+  
+  .trackIcon {
+    font-size: 1.8rem;
+    color: #0056a3;
+    background: #f0f7ff;
+    padding: 1rem;
+    border-radius: 50%;
+  }
+  
+  .trackInfo {
+    flex: 1;
+  }
+  
+  .trackDescription {
+    color: #666;
+    margin: 0.5rem 0;
+  }
+  
+  .trackMeta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .trackDifficulty {
+    background: #e8f4fd;
+    color: #0056a3;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  
+  .progressBar {
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    margin-top: 0.8rem;
+  }
+  
+  .progressFill {
+    height: 100%;
+    background: #0056a3;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
 
 @keyframes spin {
     0% { transform: rotate(0deg); }

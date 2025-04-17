@@ -6,6 +6,8 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Profile from './pages/Dashboard/Profile';
+import TrackChallenges from './pages/TrackChallenges/TrackChallenges';
+import ChallengeDetail from './pages/ChallengeDetail/ChallengeDetail';
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
         <Route path="/reset-password/:uid/:token/" element={<ResetPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path='/profile' element={<Profile />} />
+        <Route path="/tracks/:trackId/challenges" element={<TrackChallenges />} />
+        <Route path="/challenges/:challengeId" element={<ChallengeDetail />} />
       </Routes>
     </Router>
   );
