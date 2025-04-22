@@ -69,6 +69,7 @@
     display: flex;
     gap: 1rem;
     align-items: center;
+    color: #2c3e50;
   }
   
   .difficultyBadge span {
@@ -132,6 +133,7 @@
     line-height: 1.5;
     overflow-x: auto;
     margin-bottom: 1.5rem;
+    color: #2c3e50;
   }
   
   .codeBlock {
