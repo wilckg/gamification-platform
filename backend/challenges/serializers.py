@@ -18,7 +18,11 @@ class ChallengeSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Challenge
-        fields = '__all__'
+        fields = [
+            'id', 'title', 'description', 'points', 'difficulty',
+            'challenge_type', 'language', 'starter_code', 'solution_code',
+            'expected_output', 'questions', 'is_active', 'order'
+        ]
         read_only_fields = ('created_by',)
 
 class TrackSerializer(serializers.ModelSerializer):
@@ -30,27 +34,40 @@ class TrackSerializer(serializers.ModelSerializer):
 
 class UserChallengeSerializer(serializers.ModelSerializer):
     challenge = ChallengeSerializer(read_only=True)
-    selected_options = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Option.objects.all(),
-        required=False
-    )
+    selected_options = OptionSerializer(many=True, read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:
         model = UserChallenge
-        fields = '__all__'
-        read_only_fields = ['user', 'submission_date', 'points_awarded', 'is_correct', 'feedback']
+        fields = [
+            'id', 'user', 'challenge', 'submission_date', 'answer', 'code',
+            'selected_options', 'status', 'status_display', 'is_correct',
+            'points_awarded', 'feedback', 'code_output', 'obtained_points'
+        ]
+        read_only_fields = [
+            'user', 'submission_date', 'status', 'is_correct',
+            'points_awarded', 'feedback', 'code_output', 'obtained_points'
+        ]
     
+    def get_status_display(self, obj):
+        return obj.get_status_display()
+
     def validate(self, data):
         challenge = self.context.get('challenge')
         
         if not challenge:
             raise serializers.ValidationError("Desafio não encontrado")
         
-        if challenge.challenge_type in [Challenge.TYPE_DESCRIPTION, Challenge.TYPE_CODE] and not data.get('answer') and not data.get('code'):
-            raise serializers.ValidationError("Resposta é obrigatória para este tipo de desafio")
+        # Validação específica por tipo de desafio
+        if challenge.challenge_type == Challenge.TYPE_DESCRIPTION:
+            if not data.get('answer'):
+                raise serializers.ValidationError("Resposta descritiva é obrigatória")
         
-        if challenge.challenge_type in [Challenge.TYPE_SINGLE_CHOICE, Challenge.TYPE_MULTIPLE_CHOICE]:
+        elif challenge.challenge_type == Challenge.TYPE_CODE:
+            if not data.get('code'):
+                raise serializers.ValidationError("Código é obrigatório")
+        
+        elif challenge.challenge_type in [Challenge.TYPE_SINGLE_CHOICE, Challenge.TYPE_MULTIPLE_CHOICE]:
             selected_options = data.get('selected_options', [])
             if not selected_options:
                 raise serializers.ValidationError("Selecione pelo menos uma opção")

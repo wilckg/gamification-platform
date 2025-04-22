@@ -1,6 +1,7 @@
 from django.db import models
-from users.models import CustomUser
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from users.models import CustomUser
 
 User = get_user_model()
 
@@ -23,11 +24,28 @@ class Challenge(models.Model):
     TYPE_CODE = 'C'
     TYPE_SINGLE_CHOICE = 'S'
     TYPE_MULTIPLE_CHOICE = 'M'
+
+    starter_code = models.TextField(
+        blank=True, 
+        null=True,
+        help_text="Código inicial para desafios de programação"
+    )
+    solution_code = models.TextField(
+        blank=True, 
+        null=True,
+        help_text="Solução esperada para desafios de código"
+    )
+    expected_output = models.TextField(
+        blank=True, 
+        null=True,
+        help_text="Saída esperada para desafios de código"
+    )
+
     TYPE_CHOICES = [
-        (TYPE_DESCRIPTION, 'Descrição'),
-        (TYPE_CODE, 'Código'),
-        (TYPE_SINGLE_CHOICE, 'Escolha Única'),
-        (TYPE_MULTIPLE_CHOICE, 'Múltipla Escolha'),
+        ('DESCRIPTION', 'Resposta Descritiva'),
+        ('CODE', 'Código'),
+        ('SINGLE_CHOICE', 'Escolha Única'),
+        ('MULTIPLE_CHOICE', 'Múltipla Escolha'),
     ]
     
     DIFFICULTY_EASY = 'E'
@@ -45,7 +63,12 @@ class Challenge(models.Model):
     description = models.TextField()
     points = models.IntegerField()
     difficulty = models.CharField(max_length=1, choices=DIFFICULTY_CHOICES)
-    challenge_type = models.CharField(max_length=1, choices=TYPE_CHOICES)
+    # challenge_type = models.CharField(max_length=1, choices=TYPE_CHOICES)
+    challenge_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default='CODE'
+    )
     language = models.CharField(max_length=50, blank=True, null=True)  # Para desafios de código
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
@@ -85,10 +108,26 @@ class UserChallenge(models.Model):
     is_correct = models.BooleanField(default=False)
     points_awarded = models.BooleanField(default=False)
     feedback = models.TextField(blank=True, null=True)  # Feedback para respostas de código
+    code_output = models.TextField(blank=True, null=True)
+    obtained_points = models.IntegerField(default=0)
+    
+    STATUS_CHOICES = [
+        ('PENDING', 'Pendente'),
+        ('CORRECT', 'Correto'),
+        ('INCORRECT', 'Incorreto'),
+        ('PARTIAL', 'Parcialmente Correto'),
+    ]
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='PENDING'
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    evaluated_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
+        ordering = ['-submitted_at']
         unique_together = ('user', 'challenge')
-        ordering = ['-submission_date']
 
 class UserTrackProgress(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='track_progress')

@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
+from rest_framework.permissions import IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import generics
@@ -13,7 +14,9 @@ from django.contrib.auth import get_user_model
 from .serializers import (
     UserRegisterSerializer,
     PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
+    AlunoRegisterSerializer, 
+    AdminTokenObtainPairSerializer, AlunoTokenObtainPairSerializer
 )
 
 User = get_user_model()
@@ -33,6 +36,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class UserRegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegisterSerializer
+    permission_classes = [IsAdminUser]
     
 class PasswordResetRequestView(generics.GenericAPIView):
     serializer_class = PasswordResetRequestSerializer

@@ -1,11 +1,15 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import Track, Challenge, UserChallenge, UserTrackProgress
+from rest_framework.exceptions import ValidationError
+from .models import Track, Challenge, UserChallenge, UserTrackProgress, Option
 from .serializers import (
     TrackSerializer, ChallengeSerializer, 
     UserChallengeSerializer, UserTrackProgressSerializer
 )
+from django.utils import timezone
+import subprocess
+import tempfile
 
 class TrackViewSet(viewsets.ModelViewSet):
     queryset = Track.objects.filter(is_active=True)
@@ -13,6 +17,7 @@ class TrackViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
 class ChallengeViewSet(viewsets.ModelViewSet):
+    queryset = Challenge.objects.all()
     serializer_class = ChallengeSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
@@ -40,7 +45,17 @@ class UserChallengeViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        if UserChallenge.objects.filter(user=request.user, challenge=challenge).exists():
+        # Verifica se o desafio está ativo
+        if not challenge.is_active:
+            raise ValidationError("Este desafio não está disponível no momento")
+        
+        # Verifica se o usuário já completou o desafio
+        existing_submission = UserChallenge.objects.filter(
+            user=request.user, 
+            challenge=challenge
+        ).first()
+        
+        if existing_submission:
             return Response(
                 {'error': 'Você já respondeu este desafio.'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -49,13 +64,15 @@ class UserChallengeViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data, context={'challenge': challenge})
         serializer.is_valid(raise_exception=True)
         
+        # Processa a submissão
         user_challenge = serializer.save(
             user=request.user,
             challenge=challenge,
-            is_correct=self.check_answer(challenge, request.data)
+            status='PENDING'
+        )
         
-        if user_challenge.is_correct:
-            self.update_progress(request.user, challenge)
+        # Avaliação automática baseada no tipo de desafio
+        self.evaluate_submission(user_challenge)
         
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -82,12 +99,60 @@ class UserChallengeViewSet(viewsets.ModelViewSet):
                 return selected_options_set == correct_options_set
         return False
     
-    def evaluate_code(self, code, language):
-        # Implemente sua lógica de avaliação de código aqui
-        # Pode integrar com serviços como Jobe, Piston API ou seu próprio executor
-        return True  # Temporário
+    def evaluate_submission(self, user_challenge):
+        challenge = user_challenge.challenge
+        
+        if challenge.challenge_type in ['SINGLE_CHOICE', 'MULTIPLE_CHOICE']:
+            self.evaluate_quiz(user_challenge)
+        elif challenge.challenge_type == 'CODE':
+            self.evaluate_code(user_challenge)
+
+    def evaluate_quiz(self, user_challenge):
+        challenge = user_challenge.challenge
+        selected_ids = list(user_challenge.selected_options.values_list('id', flat=True))
+        correct_ids = list(Option.objects.filter(
+            question__challenge=challenge,
+            is_correct=True
+        ).values_list('id', flat=True))
+        
+        if challenge.challenge_type == 'SINGLE_CHOICE':
+            is_correct = len(selected_ids) == 1 and selected_ids[0] in correct_ids
+        else:  # MULTIPLE_CHOICE
+            is_correct = set(selected_ids) == set(correct_ids)
+        
+        user_challenge.status = 'CORRECT' if is_correct else 'INCORRECT'
+        user_challenge.is_correct = is_correct
+        user_challenge.obtained_points = challenge.points if is_correct else 0
+        user_challenge.save()
+        
+        if is_correct:
+            self.update_user_progress(user_challenge.user, challenge)
+
+    def evaluate_code(self, user_challenge):
+        # Implementação simplificada - você pode integrar com um serviço externo
+        challenge = user_challenge.challenge
+        try:
+            # Simulação de execução de código
+            user_challenge.code_output = "Saída simulada do código"
+            
+            # Verificação básica (em produção, use testes unitários)
+            is_correct = True  # Substitua por lógica real de avaliação
+            
+            user_challenge.status = 'CORRECT' if is_correct else 'INCORRECT'
+            user_challenge.is_correct = is_correct
+            user_challenge.obtained_points = challenge.points if is_correct else 0
+            user_challenge.feedback = "Código executado com sucesso" if is_correct else "Erro na execução"
+            user_challenge.save()
+            
+            if is_correct:
+                self.update_user_progress(user_challenge.user, challenge)
+                
+        except Exception as e:
+            user_challenge.status = 'INCORRECT'
+            user_challenge.feedback = f"Erro: {str(e)}"
+            user_challenge.save()
     
-    def update_progress(self, user, challenge):
+    def update_user_progress(self, user, challenge):
         # Atualiza pontos do usuário
         user.points += challenge.points
         user.save()
@@ -98,15 +163,18 @@ class UserChallengeViewSet(viewsets.ModelViewSet):
             user=user,
             track=track
         )
-        progress.completed_challenges.add(challenge)
         
-        # Verifica se completou a trilha
-        total_challenges = track.challenges.count()
-        completed = progress.completed_challenges.count()
-        if completed >= total_challenges:
-            progress.is_completed = True
-            progress.completed_at = timezone.now()
-            progress.save()
+        if not progress.completed_challenges.filter(id=challenge.id).exists():
+            progress.completed_challenges.add(challenge)
+            
+            # Verifica se completou a trilha
+            total_challenges = track.challenges.count()
+            completed = progress.completed_challenges.count()
+            
+            if completed >= total_challenges:
+                progress.is_completed = True
+                progress.completed_at = timezone.now()
+                progress.save()
 
 class UserTrackProgressViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = UserTrackProgressSerializer
@@ -115,9 +183,38 @@ class UserTrackProgressViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return UserTrackProgress.objects.filter(user=self.request.user)
     
+    @action(detail=False, methods=['get'])
+    def current_progress(self, request):
+        """Retorna o progresso do usuário em todas as trilhas"""
+        tracks = Track.objects.filter(is_active=True)
+        result = []
+        
+        for track in tracks:
+            progress, created = UserTrackProgress.objects.get_or_create(
+                user=request.user,
+                track=track
+            )
+            serializer = self.get_serializer(progress)
+            result.append(serializer.data)
+        
+        return Response(result)
+    
     @action(detail=True, methods=['get'])
     def challenges(self, request, pk=None):
         progress = self.get_object()
         challenges = progress.track.challenges.all()
-        serializer = ChallengeSerializer(challenges, many=True)
-        return Response(serializer.data)
+        
+        # Adiciona status de conclusão para cada desafio
+        challenges_data = []
+        for challenge in challenges:
+            submission = UserChallenge.objects.filter(
+                user=request.user,
+                challenge=challenge
+            ).first()
+            
+            challenge_data = ChallengeSerializer(challenge).data
+            challenge_data['completed'] = submission.is_correct if submission else False
+            challenge_data['submission_status'] = submission.status if submission else None
+            challenges_data.append(challenge_data)
+        
+        return Response(challenges_data)
