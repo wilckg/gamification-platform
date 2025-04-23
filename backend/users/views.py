@@ -1,41 +1,67 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from .serializers import (
-    AlunoRegisterSerializer,
-    AdminRegisterSerializer,
+    AlunoSerializer,
+    AdminSerializer,
     AdminTokenObtainPairSerializer,
     AlunoTokenObtainPairSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer
 )
 
+# Obtém o modelo de usuário customizado
 User = get_user_model()
 
-class AdminRegisterView(generics.CreateAPIView):
+class AdminCreateView(generics.CreateAPIView):
+    """
+    View para criação de administradores
+    Apenas superusuários podem acessar
+    """
     queryset = User.objects.all()
-    serializer_class = AdminRegisterSerializer
-    permission_classes = [IsAdminUser]
+    serializer_class = AdminSerializer
+    permission_classes = [permissions.IsAdminUser]
 
-class AlunoRegisterView(generics.CreateAPIView):
+    def perform_create(self, serializer):
+        # Garante que o usuário criado seja staff
+        serializer.save(is_staff=True)
+
+class AlunoCreateView(generics.CreateAPIView):
+    """
+    View para criação de alunos
+    Pode ser acessado por qualquer um (ou apenas por admins se preferir)
+    """
     queryset = User.objects.all()
-    serializer_class = AlunoRegisterSerializer
-    permission_classes = [IsAdminUser]  # Ou AllowAny se alunos puderem se registrar
+    serializer_class = AlunoSerializer
+    permission_classes = [permissions.AllowAny]  # Ou IsAdminUser se quiser restringir
+
+    def perform_create(self, serializer):
+        # Garante que o usuário criado seja aluno
+        serializer.save(is_aluno=True)
 
 class AdminTokenObtainPairView(TokenObtainPairView):
+    """
+    View para login de administradores (usa username/password)
+    """
     serializer_class = AdminTokenObtainPairSerializer
 
 class AlunoTokenObtainPairView(TokenObtainPairView):
+    """
+    View para login de alunos (usa email/password)
+    """
     serializer_class = AlunoTokenObtainPairSerializer
 
 class PasswordResetRequestView(generics.GenericAPIView):
+    """
+    View para solicitação de reset de senha
+    """
     serializer_class = PasswordResetRequestSerializer
 
     def post(self, request):
@@ -63,17 +89,31 @@ class PasswordResetRequestView(generics.GenericAPIView):
         )
 
 class PasswordResetConfirmView(generics.GenericAPIView):
+    """
+    View para confirmação de reset de senha
+    """
     serializer_class = PasswordResetConfirmSerializer
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        user = serializer.validated_data['user']
-        user.set_password(serializer.validated_data['new_password'])
-        user.save()
+        try:
+            uid = force_str(urlsafe_base64_decode(serializer.validated_data['uidb64']))
+            user = User.objects.get(pk=uid)
+            
+            if default_token_generator.check_token(user, serializer.validated_data['token']):
+                user.set_password(serializer.validated_data['new_password'])
+                user.save()
+                return Response(
+                    {'detail': 'Senha redefinida com sucesso'},
+                    status=status.HTTP_200_OK
+                )
         
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            pass
+            
         return Response(
-            {'detail': 'Senha redefinida com sucesso'},
-            status=status.HTTP_200_OK
+            {'detail': 'Link inválido ou expirado'},
+            status=status.HTTP_400_BAD_REQUEST
         )

@@ -7,6 +7,50 @@ from django.utils.http import urlsafe_base64_decode
 
 User = get_user_model()
 
+class AlunoSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+
+    class Meta:
+        model = User
+        fields = ['email', 'first_name', 'last_name', 'password']
+        extra_kwargs = {
+            'email': {'required': True},
+            'first_name': {'required': True},
+            'last_name': {'required': True}
+        }
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            password=validated_data['password'],
+            is_aluno=True
+        )
+        return user
+
+class AdminSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+    username = serializers.CharField(required=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'is_staff']
+        extra_kwargs = {
+            'is_staff': {'default': True, 'read_only': True}
+        }
+
+    def create(self, validated_data):
+        user = User.objects.create_superuser(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            password=validated_data['password'],
+            is_staff=True
+        )
+        return user
+
 class AlunoRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True)

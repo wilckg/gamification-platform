@@ -4,28 +4,37 @@ from django.utils.translation import gettext_lazy as _
 from .models import CustomUser
 
 class CustomUserAdmin(UserAdmin):
-    list_display = ('email', 'first_name', 'last_name', 'is_staff')
-    list_filter = ('is_staff', 'is_active')
+    list_display = ('email', 'first_name', 'last_name', 'is_staff', 'is_aluno')
+    list_filter = ('is_staff', 'is_aluno', 'is_active')
     ordering = ('email',)
+    search_fields = ('email', 'first_name', 'last_name')
 
     # Campos para edição
     fieldsets = (
-        (None, {'fields': ('username', 'password')}),
-        (_('Informações Pessoais'), {'fields': ('email', 'first_name', 'last_name', 'profile_picture', 'points')}),
-        (_('Permissões'), {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-    )
-
-    # Campos para criação (diferencia admin/aluno)
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'is_staff'),
+        (None, {'fields': ('email', 'password')}),
+        (_('Informações Pessoais'), {'fields': ('first_name', 'last_name', 'profile_picture', 'points')}),
+        (_('Permissões'), {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'is_aluno', 'groups', 'user_permissions'),
+            'description': _("Marque 'is_staff' para administradores e 'is_aluno' para estudantes")
         }),
     )
 
-    def get_fields(self, request, obj=None):
-        if obj and not obj.is_staff:  # Oculta username para alunos
-            return [f.name for f in self.model._meta.fields if f.name != 'username'] + ['password']
-        return super().get_fields(request, obj)
+    # Campos para criação
+    add_fieldsets = (
+        ('Administrador', {
+            'classes': ('collapse',),
+            'fields': ('username', 'email', 'password1', 'password2', 'is_staff', 'is_superuser'),
+            'description': _('Use esta seção para criar novos administradores')
+        }),
+        ('Aluno', {
+            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2'),
+            'description': _('Use esta seção para criar novos alunos')
+        }),
+    )
+
+    def get_fieldsets(self, request, obj=None):
+        if not obj:
+            return self.add_fieldsets
+        return super().get_fieldsets(request, obj)
 
 admin.site.register(CustomUser, CustomUserAdmin)
