@@ -17,51 +17,31 @@ from .serializers import (
     PasswordResetConfirmSerializer
 )
 
-# Obtém o modelo de usuário customizado
 User = get_user_model()
 
 class AdminCreateView(generics.CreateAPIView):
-    """
-    View para criação de administradores
-    Apenas superusuários podem acessar
-    """
     queryset = User.objects.all()
     serializer_class = AdminSerializer
     permission_classes = [permissions.IsAdminUser]
 
     def perform_create(self, serializer):
-        # Garante que o usuário criado seja staff
         serializer.save(is_staff=True)
 
 class AlunoCreateView(generics.CreateAPIView):
-    """
-    View para criação de alunos
-    Pode ser acessado por qualquer um (ou apenas por admins se preferir)
-    """
     queryset = User.objects.all()
     serializer_class = AlunoSerializer
-    permission_classes = [permissions.AllowAny]  # Ou IsAdminUser se quiser restringir
+    permission_classes = [permissions.AllowAny]
 
     def perform_create(self, serializer):
-        # Garante que o usuário criado seja aluno
         serializer.save(is_aluno=True)
 
 class AdminTokenObtainPairView(TokenObtainPairView):
-    """
-    View para login de administradores (usa username/password)
-    """
     serializer_class = AdminTokenObtainPairSerializer
 
 class AlunoTokenObtainPairView(TokenObtainPairView):
-    """
-    View para login de alunos (usa email/password)
-    """
     serializer_class = AlunoTokenObtainPairSerializer
 
 class PasswordResetRequestView(generics.GenericAPIView):
-    """
-    View para solicitação de reset de senha
-    """
     serializer_class = PasswordResetRequestSerializer
 
     def post(self, request):
@@ -89,9 +69,6 @@ class PasswordResetRequestView(generics.GenericAPIView):
         )
 
 class PasswordResetConfirmView(generics.GenericAPIView):
-    """
-    View para confirmação de reset de senha
-    """
     serializer_class = PasswordResetConfirmSerializer
 
     def post(self, request):

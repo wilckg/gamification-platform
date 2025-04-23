@@ -17,7 +17,7 @@ const ChallengeDetail = () => {
     title: 'Manipulação de Listas em Python',
     description: 'Exercícios práticos com listas em Python',
     difficulty: 'Médio',
-    type: 'code', // Pode ser: 'description', 'code', 'single_choice', 'multiple_choice'
+    type: 'description', // Pode ser: 'description', 'code', 'single_choice', 'multiple_choice'
     language: 'python',
     instructions: 'Complete as funções abaixo conforme solicitado',
     starterCode: 'def dobrar_numeros(lista):\n    """Retorna uma nova lista com cada número multiplicado por 2"""\n    # Implemente sua solução aqui\n    pass\n\ndef filtrar_pares(lista):\n    """Retorna apenas os números pares da lista"""\n    # Implemente sua solução aqui\n    pass',

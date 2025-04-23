@@ -1,7 +1,26 @@
 from django.contrib import admin
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from .models import Track, Challenge, Question, Option, UserChallenge, UserTrackProgress
 
+# Função auxiliar para desregistrar modelos com segurança
+def safe_unregister(model):
+    try:
+        admin.site.unregister(model)
+    except admin.sites.NotRegistered:
+        pass
+
+# Desregistra todos os modelos do app challenges (se já estiverem registrados)
+safe_unregister(Track)
+safe_unregister(Challenge)
+safe_unregister(Question)
+safe_unregister(Option)
+safe_unregister(UserChallenge)
+safe_unregister(UserTrackProgress)
+
+# ======================================================
+# CLASSES INLINE
+# ======================================================
 class OptionInline(admin.TabularInline):
     model = Option
     extra = 1
@@ -23,6 +42,9 @@ class ChallengeInline(admin.TabularInline):
     show_change_link = True
     ordering = ['order']
 
+# ======================================================
+# MODEL ADMIN CLASSES
+# ======================================================
 @admin.register(Track)
 class TrackAdmin(admin.ModelAdmin):
     list_display = ['title', 'is_active', 'order', 'created_at']
@@ -62,11 +84,6 @@ class ChallengeAdmin(admin.ModelAdmin):
     )
     ordering = ['track', 'order']
 
-    def save_model(self, request, obj, form, change):
-        if not change:
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
-
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
     list_display = ('text', 'challenge', 'order')
@@ -84,9 +101,9 @@ class OptionAdmin(admin.ModelAdmin):
 
 @admin.register(UserChallenge)
 class UserChallengeAdmin(admin.ModelAdmin):
-    list_display = ['user', 'challenge', 'status', 'is_correct', 'obtained_points', 'submission_date', 'evaluated_at']
+    list_display = ['user', 'challenge', 'status', 'is_correct', 'obtained_points', 'submitted_at', 'evaluated_at']
     list_filter = ['status', 'is_correct', 'challenge__track', 'challenge__difficulty']
-    readonly_fields = ['submission_date', 'evaluated_at']
+    readonly_fields = ['submitted_at', 'evaluated_at']
     search_fields = ['user__username', 'challenge__title']
     list_select_related = ['user', 'challenge', 'challenge__track']
     actions = ['mark_as_correct', 'mark_as_incorrect', 'mark_as_partial']
@@ -101,25 +118,30 @@ class UserChallengeAdmin(admin.ModelAdmin):
             'fields': ('is_correct', 'obtained_points', 'points_awarded', 'feedback', 'code_output')
         }),
         ('Datas', {
-            'fields': ('submission_date', 'evaluated_at'),
+            'fields': ('submitted_at', 'evaluated_at'),
             'classes': ('collapse',)
         }),
     )
 
     def mark_as_correct(self, request, queryset):
         for obj in queryset:
-            obj.status = UserChallenge.STATUS_CORRECT
+            obj.status = 'CORRECT'
             obj.is_correct = True
             obj.obtained_points = obj.challenge.points
             obj.evaluated_at = timezone.now()
             obj.save()
-            self.update_user_progress(obj.user, obj.challenge)
+            
+            obj.user.points += obj.challenge.points
+            obj.user.save()
+            
+            self.update_track_progress(obj.user, obj.challenge.track)
+        
         self.message_user(request, f"{queryset.count()} submissões marcadas como corretas")
     mark_as_correct.short_description = "Marcar como correto"
 
     def mark_as_incorrect(self, request, queryset):
         updated = queryset.update(
-            status=UserChallenge.STATUS_INCORRECT,
+            status='INCORRECT',
             is_correct=False,
             obtained_points=0,
             evaluated_at=timezone.now()
@@ -129,30 +151,14 @@ class UserChallengeAdmin(admin.ModelAdmin):
 
     def mark_as_partial(self, request, queryset):
         for obj in queryset:
-            obj.status = UserChallenge.STATUS_PARTIAL
+            obj.status = 'PARTIAL'
             obj.is_correct = False
-            obj.obtained_points = obj.challenge.points // 2  # 50% dos pontos
+            obj.obtained_points = obj.challenge.points // 2
             obj.evaluated_at = timezone.now()
             obj.save()
         self.message_user(request, f"{queryset.count()} submissões marcadas como parcialmente corretas")
     mark_as_partial.short_description = "Marcar como parcialmente correto"
 
-    def save_model(self, request, obj, form, change):
-        if obj.status == UserChallenge.STATUS_CORRECT and not obj.is_correct:
-            obj.is_correct = True
-            obj.obtained_points = obj.challenge.points
-            obj.points_awarded = True
-            obj.evaluated_at = timezone.now()
-            
-            # Atualiza pontos do usuário
-            obj.user.points += obj.challenge.points
-            obj.user.save()
-            
-            # Atualiza progresso na trilha
-            self.update_track_progress(obj.user, obj.challenge.track)
-        
-        super().save_model(request, obj, form, change)
-    
     def update_track_progress(self, user, track):
         progress, created = UserTrackProgress.objects.get_or_create(
             user=user,
@@ -185,3 +191,48 @@ class UserTrackProgressAdmin(admin.ModelAdmin):
         completed = obj.completed_challenges.count()
         return f"{completed}/{total} ({completed/total*100:.0f}%)" if total > 0 else "0/0 (0%)"
     progress_percentage.short_description = "Progresso"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+# ======================================================
+# ORDENAÇÃO PERSONALIZADA DO MENU ADMIN
+# ======================================================
+
+# Salvamos a implementação original
+original_get_app_list = admin.AdminSite.get_app_list
+
+def custom_get_app_list(self, request, app_label=None):
+    # Chamamos a implementação original
+    app_list = original_get_app_list(self, request, app_label)
+    
+    # Definimos a ordem desejada dos modelos
+    model_order = {
+        'Track': 1,
+        'Challenge': 2,
+        'Question': 3,
+        'Option': 4,
+        'UserChallenge': 5,
+        'UserTrackProgress': 6,
+    }
+    
+    # Aplicamos a ordenação apenas para o app 'challenges'
+    for app in app_list:
+        if app['app_label'] == 'challenges':
+            app['models'].sort(key=lambda x: model_order.get(x['object_name'], 999))
+    
+    return app_list
+
+# Substituímos a implementação original
+admin.AdminSite.get_app_list = custom_get_app_list
+
+# Configurações do Admin
+admin.site.site_header = "Administração do Sistema"
+admin.site.site_title = "Painel de Controle"
+admin.site.index_title = "Bem-vindo ao Painel de Administração"
