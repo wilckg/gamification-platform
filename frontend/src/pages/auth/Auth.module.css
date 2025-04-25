@@ -4,16 +4,18 @@
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
-    /* padding: 2rem; */
+    padding: 1rem;
 }
 
 .authCard {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
     padding: 2.5rem;
     width: 100%;
     max-width: 450px;
+    transition: all 0.3s ease;
+    animation: fadeIn 0.5s ease-out;
 }
 
 .authHeader {
@@ -43,6 +45,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    position: relative;
 }
 
 .formGroup label {
@@ -72,6 +75,35 @@
     outline: none;
 }
 
+.formGroup.invalid input {
+    border-color: #e74c3c;
+}
+
+.formGroup.invalid .inputIcon {
+    color: #e74c3c;
+}
+
+.errorMessage {
+    color: #e74c3c;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+.passwordInput {
+    position: relative;
+}
+
+.passwordToggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #7f8c8d;
+    cursor: pointer;
+}
+
 .submitButton {
     background: #0056a3;
     color: white;
@@ -90,6 +122,31 @@
     transform: translateY(-2px);
 }
 
+.submitButton.loading {
+    position: relative;
+    color: transparent;
+}
+
+.submitButton.loading::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.submitButton:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
 .formFooter {
     display: flex;
     justify-content: flex-end;
@@ -104,6 +161,8 @@
 
 .forgotLink:hover {
     text-decoration: underline;
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .authFooter {
@@ -124,6 +183,8 @@
 
 .authLink:hover {
     text-decoration: underline;
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .linkIcon {
@@ -139,6 +200,13 @@
     text-align: center;
 }
 
+.authError::before {
+    content: "\f06a";
+    margin-right: 0.5rem;
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+}
+
 .authSuccess {
     color: #27ae60;
     background: #e8f5e9;
@@ -146,4 +214,31 @@
     border-radius: 8px;
     margin-bottom: 1.5rem;
     text-align: center;
+}
+
+.authSuccess::before {
+    content: "\f058";
+    margin-right: 0.5rem;
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+}
+
+@keyframes spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+    .authCard {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    
+    .authHeader h2 {
+        font-size: 1.5rem;
+    }
 }

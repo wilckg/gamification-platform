@@ -95,6 +95,8 @@ class Challenge(models.Model):
         help_text=_("Saída esperada para desafios de código")
     )
     start_date = models.DateTimeField(
+        null=True,
+        blank=True,
         default=timezone.now,
         verbose_name=_("Data de Início")
     )
@@ -112,11 +114,28 @@ class Challenge(models.Model):
         verbose_name=_("Ordem")
     )
     
+    
     class Meta:
         verbose_name = _("Desafio")
         verbose_name_plural = _("Desafios")
         ordering = ['order']
     
+    @property
+    def TYPE_DESCRIPTION(self):
+        return ChallengeType.DESCRIPTION.value
+    
+    @property
+    def TYPE_CODE(self):
+        return ChallengeType.CODE.value
+    
+    @property
+    def TYPE_SINGLE_CHOICE(self):
+        return ChallengeType.SINGLE_CHOICE.value
+    
+    @property
+    def TYPE_MULTIPLE_CHOICE(self):
+        return ChallengeType.MULTIPLE_CHOICE.value
+
     def __str__(self):
         return f"{self.track.title} - {self.title}"
     

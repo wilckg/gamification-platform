@@ -2,14 +2,13 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from .models import Track, Challenge, UserChallenge, UserTrackProgress, Option
+from .models import Track, Challenge, UserChallenge, UserTrackProgress, Question, Option
 from .serializers import (
     TrackSerializer, ChallengeSerializer, 
+    QuestionSerializer, OptionSerializer,
     UserChallengeSerializer, UserTrackProgressSerializer
 )
 from django.utils import timezone
-import subprocess
-import tempfile
 
 class TrackViewSet(viewsets.ModelViewSet):
     queryset = Track.objects.filter(is_active=True)
@@ -21,12 +20,63 @@ class ChallengeViewSet(viewsets.ModelViewSet):
     serializer_class = ChallengeSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return super().get_permissions()
+
     def get_queryset(self):
         queryset = Challenge.objects.filter(is_active=True)
         track_id = self.request.query_params.get('track_id')
         if track_id:
             queryset = queryset.filter(track_id=track_id)
         return queryset
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        challenge_id = self.request.query_params.get('challenge_id')
+        if challenge_id:
+            queryset = queryset.filter(challenge_id=challenge_id)
+        return queryset
+
+    @action(detail=False, methods=['get'], url_path='by-challenge/(?P<challenge_pk>[^/.]+)')
+    def list_by_challenge(self, request, challenge_pk=None):
+        questions = self.get_queryset().filter(challenge_id=challenge_pk)
+        serializer = self.get_serializer(questions, many=True)
+        return Response(serializer.data)
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return super().get_permissions()
+
+class OptionViewSet(viewsets.ModelViewSet):
+    queryset = Option.objects.all()
+    serializer_class = OptionSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        question_id = self.request.query_params.get('question_id')
+        if question_id:
+            queryset = queryset.filter(question_id=question_id)
+        return queryset
+
+    @action(detail=False, methods=['get'], url_path='by-question/(?P<question_pk>[^/.]+)')
+    def list_by_question(self, request, question_pk=None):
+        options = self.get_queryset().filter(question_id=question_pk)
+        serializer = self.get_serializer(options, many=True)
+        return Response(serializer.data)
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return super().get_permissions()
 
 class UserChallengeViewSet(viewsets.ModelViewSet):
     serializer_class = UserChallengeSerializer

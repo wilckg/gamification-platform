@@ -178,6 +178,12 @@ class UserChallengeAdmin(admin.ModelAdmin):
             progress.completed_at = timezone.now()
             progress.save()
 
+    def has_add_permission(self, request):
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 @admin.register(UserTrackProgress)
 class UserTrackProgressAdmin(admin.ModelAdmin):
     list_display = ['user', 'track', 'progress_percentage', 'is_completed', 'completed_at']
