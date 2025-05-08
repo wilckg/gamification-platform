@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -64,7 +65,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = "backend.urls"
@@ -102,12 +102,10 @@ DATABASES = {
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
 }
 
@@ -186,28 +184,26 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Configurações de CORS e CSRF
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Seu frontend React
-    "http://127.0.0.1:5173",
+    "https://ubiquitous-space-potato-7rw565rxpxxfrvp9-5173.app.github.dev",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    "https://ubiquitous-space-potato-7rw565rxpxxfrvp9-5173.app.github.dev",
 ]
 
-# Adicione estas linhas no seu settings.py
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'https://localhost:8000',  # Adicione esta linha para HTTPS
-    'https://127.0.0.1:8000',
-]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CORS_ALLOW_HEADERS = ['*']
+
+CORS_ALLOW_METHODS = ['*']
 
 CORS_ALLOW_CREDENTIALS = True
 
 # Configure CORS (no final do arquivo):
-CORS_ALLOW_ALL_ORIGINS = True  # Em produção, restrinja isso!
+# CORS_ALLOW_ALL_ORIGINS = True  # Em produção, restrinja isso!
 
 APPEND_SLASH = False
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

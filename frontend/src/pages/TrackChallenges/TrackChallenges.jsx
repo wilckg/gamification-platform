@@ -1,35 +1,74 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { FaArrowLeft, FaFlag, FaCheck } from 'react-icons/fa';
 import ProfileDropdown from '../../components/ProfileDropdown/ProfileDropdown';
-import styles from './TrackChallenges.module.css'; // Arquivo CSS que vamos criar
+import api from '../../services/api';
+import styles from './TrackChallenges.module.css';
 
 const TrackChallenges = () => {
   const { trackId } = useParams();
   const navigate = useNavigate();
 
-  // Dados mockados (substitua pela API)
-  const track = {
-    id: trackId,
-    title: 'Fundamentos de Programação',
-    description: 'Trilha introdutória para iniciantes em lógica de programação',
-    progress: 35,
-    challenges: [
-      { id: 1, title: 'Variáveis e Tipos', difficulty: 'Fácil', completed: true },
-      { id: 2, title: 'Estruturas Condicionais', difficulty: 'Fácil', completed: false },
-      { id: 3, title: 'Loops e Iterações', difficulty: 'Médio', completed: false }
-    ]
-  };
+  const [track, setTrack] = useState(null);
+  const [user, setUser] = useState(null);
+
+  const [difficulty, setDifficulty] = useState({
+    "EASY": "Fácil",
+    "MEDIUM": "Médio",
+    "HARD": "Difícil"
+  });
+
+  useEffect(() => {
+    const fetchUserAndTrack = async () => {
+      try {
+        const userRes = await api.get('/api/user/profile');
+        setUser(userRes.data);
+
+        const trackRes = await api.get(`/api/challenges/tracks/${trackId}/`);
+        const challengesRes = await api.get('/api/challenges/user-challenges/');
+
+        const userChallenges = challengesRes.data.filter(c => c.track === parseInt(trackId));
+
+        const formattedChallenges = trackRes.data.challenges.map(challenge => {
+          const userChallenge = userChallenges.find(uc => uc.challenge === challenge.id);
+          return {
+            id: challenge.id,
+            title: challenge.title,
+            difficulty: difficulty[challenge.difficulty],
+            completed: userChallenge?.completed || false,
+          };
+        });
+
+        const completedCount = formattedChallenges.filter(c => c.completed).length;
+        const total = formattedChallenges.length;
+        const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+        setTrack({
+          id: trackRes.data.id,
+          title: trackRes.data.title,
+          description: trackRes.data.description,
+          progress,
+          challenges: formattedChallenges
+        });
+      } catch (error) {
+        console.error('Erro ao carregar trilha ou desafios:', error);
+      }
+    };
+
+    fetchUserAndTrack();
+  }, [trackId]);
+
+  if (!track || !user) return null;
 
   return (
     <div className={styles.container}>
-      {/* Header consistente com o Dashboard */}
       <header className={styles.header}>
         <div className={styles.headerContent}>
           <button onClick={() => navigate('/dashboard')} className={styles.backButton}>
             <FaArrowLeft /> Voltar
           </button>
           <h1 className={styles.logo}>Trilha: {track.title}</h1>
-          <ProfileDropdown user={{ name: 'Usuário', points: 1200 }} />
+          <ProfileDropdown user={user} />
         </div>
       </header>
 

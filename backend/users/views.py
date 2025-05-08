@@ -1,4 +1,6 @@
 from rest_framework import generics, status, permissions
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.core.mail import send_mail
@@ -14,7 +16,8 @@ from .serializers import (
     AdminTokenObtainPairSerializer,
     AlunoTokenObtainPairSerializer,
     PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
+    AvatarSerializer
 )
 
 User = get_user_model()
@@ -94,3 +97,20 @@ class PasswordResetConfirmView(generics.GenericAPIView):
             {'detail': 'Link inválido ou expirado'},
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+class AlunoProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = AlunoSerializer(request.user)
+        return Response(serializer.data)
+
+class AvatarUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        serializer = AvatarSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

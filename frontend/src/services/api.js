@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000' || 'https://ubiquitous-space-potato-7rw565rxpxxfrvp9-8000.app.github.dev/',
+  // baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000' || 'https://ubiquitous-space-potato-7rw565rxpxxfrvp9-8000.app.github.dev/',
+  baseURL: 'https://ubiquitous-space-potato-7rw565rxpxxfrvp9-8000.app.github.dev/',
 });
 
 // Interceptor para adicionar o token de autenticação

@@ -14,6 +14,8 @@ from users.views import (
     PasswordResetConfirmView
 )
 from django.views.generic.base import RedirectView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # Redirecionamento padrão para o admin
@@ -44,7 +46,7 @@ urlpatterns = [
             path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
         ])),
         
-        # App de Challenges
         path('challenges/', include('challenges.urls')),
+        path('user/', include('users.urls')),
     ])),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

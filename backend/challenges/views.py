@@ -233,20 +233,41 @@ class UserTrackProgressViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return UserTrackProgress.objects.filter(user=self.request.user)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='current')
     def current_progress(self, request):
-        """Retorna o progresso do usuário em todas as trilhas"""
+        """Retorna todas as trilhas ativas com ou sem progresso, ordenadas por progresso decrescente"""
         tracks = Track.objects.filter(is_active=True)
         result = []
-        
+
         for track in tracks:
-            progress, created = UserTrackProgress.objects.get_or_create(
-                user=request.user,
-                track=track
-            )
-            serializer = self.get_serializer(progress)
-            result.append(serializer.data)
-        
+            # Busca ou inicializa o progresso
+            progress_obj = UserTrackProgress.objects.filter(user=request.user, track=track).first()
+
+            if progress_obj:
+                completed = progress_obj.completed_challenges.count()
+            else:
+                completed = 0
+
+            total = track.challenges.count()
+            percentage = int((completed / total) * 100) if total > 0 else 0
+
+            # Serializa os dados da trilha como resposta única
+            result.append({
+                'id': progress_obj.id if progress_obj else None,
+                'track': TrackSerializer(track, context=self.get_serializer_context()).data,
+                'progress': {
+                    'completed': completed,
+                    'total': total,
+                    'percentage': percentage
+                },
+                'is_completed': progress_obj.is_completed if progress_obj else False,
+                'completed_at': progress_obj.completed_at if progress_obj else None,
+                'progress_percentage': percentage
+            })
+
+        # Ordena trilhas com mais progresso primeiro
+        result.sort(key=lambda x: x['progress_percentage'], reverse=True)
+
         return Response(result)
     
     @action(detail=True, methods=['get'])

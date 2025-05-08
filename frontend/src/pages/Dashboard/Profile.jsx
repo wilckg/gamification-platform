@@ -6,17 +6,13 @@ import ProfileDropdown from '../../components/ProfileDropdown/ProfileDropdown';
 import styles from './Dashboard.module.css';
 
 export default function Profile() {
-    // Dados do usuário
-    const [user, setUser] = useState({
-        name: 'João Silva',
-        email: 'joao@exemplo.com',
-        rank: 5,
-        points: 1200,
-        joined: '15/03/2023',
-        challengesCompleted: 24,
-        accuracy: '87%',
-        avatar: null
-    });
+    const [user, setUser] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isModalClosing, setIsModalClosing] = useState(false);
+    const fileInputRef = useRef(null);
 
     const achievements = [
         { id: 1, name: 'Iniciante', description: 'Completou 5 desafios', icon: <FaStar />, earned: true },
@@ -32,19 +28,10 @@ export default function Profile() {
         { id: 4, name: 'Otimização', level: 'Ouro', earned: false }
     ];
 
-    // Estados para o avatar
-    const [avatarPreview, setAvatarPreview] = useState(null);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [showPreviewModal, setShowPreviewModal] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isModalClosing, setIsModalClosing] = useState(false);
-    const fileInputRef = useRef(null);
-
-    // Carrega os dados do usuário e avatar
     useEffect(() => {
         const loadUserData = async () => {
             try {
-                const response = await api.get('/user/profile');
+                const response = await api.get('/api/user/profile');
                 setUser(response.data);
                 if (response.data.avatar) {
                     setAvatarPreview(`${process.env.REACT_APP_API_URL}${response.data.avatar}`);
@@ -56,7 +43,6 @@ export default function Profile() {
         loadUserData();
     }, []);
 
-    // Bloqueia escape e scroll quando modal está aberto
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (showPreviewModal && e.key === 'Escape') {
@@ -77,17 +63,13 @@ export default function Profile() {
         };
     }, [showPreviewModal]);
 
-    const handleAvatarClick = () => {
-        fileInputRef.current.click();
-    };
+    const handleAvatarClick = () => fileInputRef.current.click();
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         setSelectedFile(file);
 
-        // Cria o preview da imagem
         const reader = new FileReader();
         reader.onloadend = () => {
             setAvatarPreview(reader.result);
@@ -98,17 +80,13 @@ export default function Profile() {
 
     const handleUploadAvatar = async () => {
         if (!selectedFile) return;
-
         try {
             setIsLoading(true);
-            
             const formData = new FormData();
             formData.append('avatar', selectedFile);
 
-            const response = await api.patch('/user/avatar', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+            const response = await api.patch('api/user/avatar', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             setUser(prev => ({ ...prev, avatar: response.data.avatar }));
@@ -129,9 +107,11 @@ export default function Profile() {
         setTimeout(() => {
             setShowPreviewModal(false);
             setIsModalClosing(false);
-            setAvatarPreview(user.avatar || null);
+            setAvatarPreview(user?.avatar || null);
         }, 300);
     };
+
+    if (!user) return null;
 
     return (
         <div className={styles.dashboardContainer}>
@@ -141,13 +121,11 @@ export default function Profile() {
                         <FaChevronLeft /> Voltar
                     </Link>
                     <h1 className={styles.logo}>Meu Perfil</h1>
-                    
                     <ProfileDropdown user={user} />
                 </div>
             </header>
 
             <main className={styles.profileContent}>
-                {/* Seção de Informações do Usuário */}
                 <div className={styles.profileSection}>
                     <div className={styles.profileHeader}>
                         <div className={styles.avatarContainer} onClick={handleAvatarClick}>
@@ -157,14 +135,10 @@ export default function Profile() {
                                 </div>
                             )}
                             {avatarPreview ? (
-                                <img
-                                    src={avatarPreview}
-                                    alt="Avatar"
-                                    className={styles.avatarImage}
-                                />
+                                <img src={avatarPreview} alt="Avatar" className={styles.avatarImage} />
                             ) : (
                                 <div className={styles.avatarPlaceholder}>
-                                    {user.name.charAt(0).toUpperCase()}
+                                    {user.first_name.charAt(0).toUpperCase()}
                                 </div>
                             )}
                             <div className={styles.avatarOverlay}>
@@ -179,7 +153,7 @@ export default function Profile() {
                             />
                         </div>
                         <div>
-                            <h2>{user.name}</h2>
+                            <h2>{user.first_name} {user.last_name}</h2>
                             <p className={styles.profileEmail}>{user.email}</p>
                         </div>
                     </div>
@@ -187,24 +161,23 @@ export default function Profile() {
                     <div className={styles.statsGrid}>
                         <div className={styles.statCard}>
                             <h3>Ranking</h3>
-                            <p className={styles.statValue}>#{user.rank}</p>
+                            <p className={styles.statValue}>#{user.rank ?? '-'}</p>
                         </div>
                         <div className={styles.statCard}>
                             <h3>Pontuação</h3>
-                            <p className={styles.statValue}>{user.points}</p>
+                            <p className={styles.statValue}>{user.points ?? 0}</p>
                         </div>
                         <div className={styles.statCard}>
                             <h3>Desafios</h3>
-                            <p className={styles.statValue}>{user.challengesCompleted}</p>
+                            <p className={styles.statValue}>{user.challengesCompleted ?? 0}</p>
                         </div>
                         <div className={styles.statCard}>
                             <h3>Precisão</h3>
-                            <p className={styles.statValue}>{user.accuracy}</p>
+                            <p className={styles.statValue}>{user.accuracy ?? '0%'}</p>
                         </div>
                     </div>
                 </div>
 
-                {/* Seção de Conquistas */}
                 <div className={styles.profileSection}>
                     <h2 className={styles.sectionTitle}>
                         <FaAward className={styles.sectionIcon} /> Conquistas
@@ -215,9 +188,7 @@ export default function Profile() {
                                 key={achievement.id}
                                 className={`${styles.achievementCard} ${achievement.earned ? styles.earned : ''}`}
                             >
-                                <div className={styles.achievementIcon}>
-                                    {achievement.icon}
-                                </div>
+                                <div className={styles.achievementIcon}>{achievement.icon}</div>
                                 <h3>{achievement.name}</h3>
                                 <p>{achievement.description}</p>
                                 <div className={styles.achievementStatus}>
@@ -228,7 +199,6 @@ export default function Profile() {
                     </div>
                 </div>
 
-                {/* Seção de Badges */}
                 <div className={styles.profileSection}>
                     <h2 className={styles.sectionTitle}>
                         <FaMedal className={styles.sectionIcon} /> Badges
@@ -250,39 +220,22 @@ export default function Profile() {
                 </div>
             </main>
 
-            {/* Modal de Preview do Avatar */}
             {showPreviewModal && (
                 <div className={`${styles.previewModal} ${isModalClosing ? styles.modalClosing : ''}`}>
                     <div className={styles.previewContent}>
                         <h3>Confirme seu novo avatar</h3>
                         <div className={styles.previewImageContainer}>
-                            <img 
-                                src={avatarPreview} 
-                                alt="Preview do avatar" 
-                                className={styles.previewImage}
-                            />
+                            <img src={avatarPreview} alt="Preview do avatar" className={styles.previewImage} />
                         </div>
                         <p className={styles.previewText}>
                             Esta imagem substituirá seu avatar atual. Você confirma a alteração?
                         </p>
                         <div className={styles.previewActions}>
-                            <button 
-                                onClick={handleCancel}
-                                className={styles.cancelButton}
-                                disabled={isLoading}
-                            >
+                            <button onClick={handleCancel} className={styles.cancelButton} disabled={isLoading}>
                                 Cancelar
                             </button>
-                            <button 
-                                onClick={handleUploadAvatar}
-                                className={styles.confirmButton}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? (
-                                    <div className={styles.spinner}></div>
-                                ) : (
-                                    'Confirmar Avatar'
-                                )}
+                            <button onClick={handleUploadAvatar} className={styles.confirmButton} disabled={isLoading}>
+                                {isLoading ? <div className={styles.spinner}></div> : 'Confirmar Avatar'}
                             </button>
                         </div>
                     </div>

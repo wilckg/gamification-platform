@@ -19,9 +19,9 @@ router.register(r'options', OptionViewSet, basename='option')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('user-progress/current/', 
-        UserTrackProgressViewSet.as_view({'get': 'current_progress'}),
-        name='user-progress-current'),
+    # path('user-progress/current/', 
+    #     UserTrackProgressViewSet.as_view({'get': 'current_progress'}),
+    #     name='user-progress-current'),
     path('challenges/<int:challenge_pk>/questions/', 
         QuestionViewSet.as_view({'get': 'list_by_challenge'}), 
         name='challenge-questions'),

@@ -160,6 +160,11 @@
     color: #f39c12;
   }
   
+  .difficulty.difícil {
+    background: #fff8e1;
+    color: #bb0505;
+  }
+
   .completedBadge {
     display: flex;
     align-items: center;

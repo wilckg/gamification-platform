@@ -12,7 +12,7 @@ class AlunoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'password']
+        fields = ['email', 'first_name', 'last_name', 'password', 'points', 'profile_picture']
         extra_kwargs = {
             'email': {'required': True},
             'first_name': {'required': True},
@@ -102,10 +102,15 @@ class AlunoTokenObtainPairSerializer(TokenObtainPairSerializer):
     username_field = 'email'
 
     def validate(self, attrs):
-        attrs['username'] = attrs.pop('email')
+        email = attrs.get('email')
+        if not email:
+            raise serializers.ValidationError("O campo 'email' é obrigatório.")
+        attrs['username'] = email  # o JWT ainda usa 'username' internamente
         data = super().validate(attrs)
+        
         if self.user.is_staff:
             raise serializers.ValidationError("Use o painel de admin para login de administradores.")
+
         data.update({
             'email': self.user.email,
             'first_name': self.user.first_name,
@@ -130,3 +135,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             raise serializers.ValidationError("Link inválido")
         return attrs
+
+class AvatarSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(source='profile_picture')
+
+    class Meta:
+        model = User
+        fields = ['avatar']

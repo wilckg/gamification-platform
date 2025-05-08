@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTrophy, FaCode, FaLayerGroup, FaUserCircle, FaChevronDown, FaSignOutAlt } from 'react-icons/fa';
+import { FaTrophy, FaCode, FaLayerGroup } from 'react-icons/fa';
+import api from '../../services/api';
 import ProfileDropdown from '../../components/ProfileDropdown/ProfileDropdown';
 import styles from './Dashboard.module.css';
 
@@ -8,67 +9,68 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('challenges');
+  const [user, setUser] = useState(null);
+  const [tracks, setTracks] = useState([]);
+  const [ranking, setRanking] = useState([]);
 
-  // Dados do usuário (exemplo)
-  const user = {
-    name: 'João Silva',
-    email: 'joao@exemplo.com',
-    rank: 5,
-    points: 1200
-  };
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await api.get('/api/user/profile');
+        setUser(res.data);
+      } catch (err) {
+        console.error('Erro ao buscar usuário:', err);
+      }
+    };
 
-  // Dados das trilhas (substitua pela chamada à API)
-  const tracks = [
-    {
-      id: 1,
-      title: 'Fundamentos de Programação',
-      description: 'Aprenda os conceitos básicos de lógica e algoritmos',
-      icon: <FaCode />,
-      challengesCount: 8,
-      completedChallenges: 3,
-      difficulty: 'Iniciante'
-    },
-    {
-      id: 2,
-      title: 'Estruturas de Dados',
-      description: 'Domine arrays, listas e estruturas complexas',
-      icon: <FaLayerGroup />,
-      challengesCount: 10,
-      completedChallenges: 1,
-      difficulty: 'Intermediário'
-    },
-    {
-      id: 3,
-      title: 'Algoritmos Avançados',
-      description: 'Aprenda algoritmos de busca, ordenação e otimização',
-      icon: <FaCode />,
-      challengesCount: 12,
-      completedChallenges: 0,
-      difficulty: 'Avançado'
-    }
-  ];
+    const fetchTracks = async () => {
+      try {
+        const res = await api.get('/api/challenges/user-progress/current/');
+        const formatted = res.data.map(item => ({
+          id: item.track.id,
+          title: item.track.title,
+          description: item.track.description,
+          icon: <FaCode />,
+          challengesCount: item.progress.total,
+          completedChallenges: item.progress.completed,
+          difficulty: item.track.difficulty ?? 'Desconhecido'
+        }));
+        setTracks(formatted);
+      } catch (err) {
+        console.error('Erro ao buscar trilhas:', err);
+      }
+    };
 
-  // Dados do ranking (exemplo)
-  const ranking = [
-    { id: 1, name: 'Maria Souza', points: 2500 },
-    { id: 2, name: 'Carlos Oliveira', points: 2100 },
-    { id: 3, name: 'Ana Santos', points: 1900 },
-    { id: 5, name: user.name, points: user.points, isCurrentUser: true }
-  ];
+    const fetchRanking = async () => {
+      try {
+        const res = await api.get('/ranking/'); // Supondo que você tenha esse endpoint
+        const formatted = res.data.map((r, index) => ({
+          id: r.id,
+          name: r.name,
+          points: r.points,
+          isCurrentUser: user && r.id === user.id
+        }));
+        setRanking(formatted);
+      } catch (err) {
+        console.error('Erro ao buscar ranking:', err);
+      }
+    };
+
+    fetchUser();
+    fetchTracks();
+    fetchRanking();
+  }, []);
 
   return (
     <div className={styles.dashboardContainer}>
-      {/* Header */}
       <header className={styles.header}>
         <div className={styles.headerContent}>
           <h1 className={styles.logo}>CodeChallenge</h1>
-          <ProfileDropdown user={user} />
+          {user && <ProfileDropdown user={user} />}
         </div>
       </header>
 
-      {/* Conteúdo Principal */}
       <main className={styles.mainContent}>
-        {/* Abas */}
         <div className={styles.tabs}>
           <button
             className={`${styles.tabButton} ${activeTab === 'challenges' ? styles.active : ''}`}
@@ -84,7 +86,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Lista de Trilhas (se aba ativa for 'challenges') */}
         {activeTab === 'challenges' ? (
           <div className={styles.tracksList}>
             <h2>Trilhas Disponíveis</h2>
@@ -107,7 +108,7 @@ export default function Dashboard() {
                   <div className={styles.progressBar}>
                     <div 
                       className={styles.progressFill} 
-                      style={{ width: `${(track.completedChallenges / track.challengesCount) * 100}%` }}
+                      style={{ width: `${(track.completedChallenges / (track.challengesCount || 1)) * 100}%` }}
                     ></div>
                   </div>
                 </div>
@@ -115,7 +116,6 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          /* Ranking (se aba ativa for 'ranking') */
           <div className={styles.rankingList}>
             <h2>Ranking de Pontuação</h2>
             <table>

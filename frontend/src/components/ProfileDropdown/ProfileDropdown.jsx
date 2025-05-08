@@ -16,7 +16,7 @@ const ProfileDropdown = ({ user }) => {
 
   return (
     <div className={styles.profileContainer}>
-      <span className={styles.userName}>{user.name}</span>
+      <span className={styles.userName}>{user.first_name} {user.last_name}</span>
       <div 
         className={styles.profileDropdownTrigger}
         onClick={() => setIsOpen(!isOpen)}
