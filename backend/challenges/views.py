@@ -4,7 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from .models import Track, Challenge, UserChallenge, UserTrackProgress, Question, Option
 from .serializers import (
-    TrackSerializer, ChallengeSerializer, 
+    TrackSerializer, ChallengeSerializer,
+    ChallengeDetailSerializer,
     QuestionSerializer, OptionSerializer,
     UserChallengeSerializer, UserTrackProgressSerializer
 )
@@ -17,9 +18,13 @@ class TrackViewSet(viewsets.ModelViewSet):
 
 class ChallengeViewSet(viewsets.ModelViewSet):
     queryset = Challenge.objects.all()
-    serializer_class = ChallengeSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return ChallengeDetailSerializer
+        return ChallengeSerializer
+
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAdminUser()]

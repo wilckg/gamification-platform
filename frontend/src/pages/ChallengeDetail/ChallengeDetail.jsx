@@ -16,6 +16,12 @@ const ChallengeDetail = () => {
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [submitted, setSubmitted] = useState(false);
 
+  const [difficulty, setDifficulty] = useState({
+    "EASY": "Fácil",
+    "MEDIUM": "Médio",
+    "HARD": "Difícil"
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -151,7 +157,7 @@ const ChallengeDetail = () => {
 
       <main className={styles.mainContent}>
         <div className={styles.difficultyBadge}>
-          Dificuldade: <span className={styles[challenge.difficulty.toLowerCase()]}>{challenge.difficulty}</span>
+          Dificuldade: <span className={styles[difficulty[challenge.difficulty.toLowerCase()]]}>{difficulty[challenge.difficulty]}</span>
           <span className={styles.typeBadge}>
             {({
               DESCRIPTION: 'Descritivo',

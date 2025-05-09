@@ -1,6 +1,32 @@
 from rest_framework import serializers
 from .models import Track, Challenge, Question, Option, UserChallenge, UserTrackProgress
 
+# Option inline para retornar dentro das questões
+class OptionInlineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Option
+        fields = ['id', 'text', 'is_correct', 'order']
+
+# Question com opções embutidas
+class QuestionWithOptionsSerializer(serializers.ModelSerializer):
+    options = OptionInlineSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Question
+        fields = ['id', 'text', 'order', 'options']
+
+# Challenge com perguntas e opções
+class ChallengeDetailSerializer(serializers.ModelSerializer):
+    questions = QuestionWithOptionsSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Challenge
+        fields = [
+            'id', 'track', 'title', 'description', 'points', 'difficulty',
+            'challenge_type', 'language', 'starter_code', 'solution_code',
+            'expected_output', 'is_active', 'order', 'questions'
+        ]
+
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Option
@@ -61,20 +87,16 @@ class UserChallengeSerializer(serializers.ModelSerializer):
         if not challenge:
             raise serializers.ValidationError("Desafio não encontrado")
         
-        # Validação específica por tipo de desafio
         if challenge.challenge_type == "DESCRIPTION":
             if not data.get('answer'):
                 raise serializers.ValidationError("Resposta descritiva é obrigatória")
-        
         elif challenge.challenge_type == "CODE":
             if not data.get('code'):
                 raise serializers.ValidationError("Código é obrigatório")
-        
         elif challenge.challenge_type in ["SINGLE_CHOICE", "MULTIPLE_CHOICE"]:
             selected_options = data.get('selected_options', [])
             if not selected_options:
                 raise serializers.ValidationError("Selecione pelo menos uma opção")
-            
             if challenge.challenge_type == "SINGLE_CHOICE" and len(selected_options) > 1:
                 raise serializers.ValidationError("Este desafio permite apenas uma resposta")
         
