@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Track, Challenge, Question, Option, UserChallenge, UserTrackProgress
 
-# Option inline para retornar dentro das questões
+# Option inline para perguntas com opções
 class OptionInlineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Option
@@ -15,7 +15,7 @@ class QuestionWithOptionsSerializer(serializers.ModelSerializer):
         model = Question
         fields = ['id', 'text', 'order', 'options']
 
-# Challenge com perguntas e opções
+# Challenge detalhado para GET /challenges/:id/
 class ChallengeDetailSerializer(serializers.ModelSerializer):
     questions = QuestionWithOptionsSerializer(many=True, read_only=True)
 
@@ -66,7 +66,10 @@ class TrackSerializer(serializers.ModelSerializer):
 
 class UserChallengeSerializer(serializers.ModelSerializer):
     challenge = ChallengeSerializer(read_only=True)
-    selected_options = OptionSerializer(many=True, read_only=True)
+    selected_options = serializers.PrimaryKeyRelatedField(
+        queryset=Option.objects.all(),
+        many=True
+    )
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:

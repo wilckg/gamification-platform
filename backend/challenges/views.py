@@ -99,38 +99,43 @@ class UserChallengeViewSet(viewsets.ModelViewSet):
                 {'error': 'Desafio não encontrado.'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
-        # Verifica se o desafio está ativo
+
         if not challenge.is_active:
             raise ValidationError("Este desafio não está disponível no momento")
-        
-        # Verifica se o usuário já completou o desafio
+
         existing_submission = UserChallenge.objects.filter(
             user=request.user, 
             challenge=challenge
         ).first()
-        
+
         if existing_submission:
             return Response(
                 {'error': 'Você já respondeu este desafio.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         serializer = self.get_serializer(data=request.data, context={'challenge': challenge})
         serializer.is_valid(raise_exception=True)
-        
-        # Processa a submissão
-        user_challenge = serializer.save(
+
+        validated_data = serializer.validated_data.copy()
+        selected_options = validated_data.pop('selected_options', [])
+        validated_data.pop('challenge', None)  # <- remove possível duplicação
+
+        user_challenge = UserChallenge.objects.create(
             user=request.user,
             challenge=challenge,
-            status='PENDING'
+            status='PENDING',
+            **validated_data
         )
-        
-        # Avaliação automática baseada no tipo de desafio
+        user_challenge.selected_options.set(selected_options)
+        user_challenge.save()
+
         self.evaluate_submission(user_challenge)
-        
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+        return Response(
+            self.get_serializer(user_challenge).data,
+            status=status.HTTP_201_CREATED
+        )
     
     def check_answer(self, challenge, data):
         if challenge.challenge_type == Challenge.TYPE_CODE:
