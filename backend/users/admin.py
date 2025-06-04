@@ -49,10 +49,17 @@ class AlunoAdmin(UserAdmin):
         return super().get_queryset(request).filter(is_aluno=True)
 
     fieldsets = (
-        (None, {'fields': ('email', 'password')}),
-        (_('Informações Pessoais'), {'fields': ('first_name', 'last_name', 'profile_picture', 'points')}),
-        (_('Permissões'), {'fields': ('is_active',)}),
+        (None, {
+            'fields': (
+                'email', 'username', 'first_name', 'last_name',
+                'profile_picture', 'points',  # ✅ aqui
+                'password',
+            )
+        }),
+        (_('Permissões'), {'fields': ('is_active', 'is_aluno', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        (_('Datas importantes'), {'fields': ('last_login', 'date_joined')}),
     )
+    list_display = ('email', 'first_name', 'last_name', 'is_aluno', 'points')
 
     add_fieldsets = (
         (None, {

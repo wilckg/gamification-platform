@@ -62,16 +62,25 @@ const ChallengeDetail = () => {
 
   const handleSubmit = async () => {
     const payload = { challenge: challenge.id };
-    if (challenge.challenge_type === 'DESCRIPTION') payload.answer = answer;
-    if (challenge.challenge_type === 'CODE') payload.code = code;
-    if (['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(challenge.challenge_type))
-      payload.selected_options = selectedOptions;
+
+    if (challenge.challenge_type === 'DESCRIPTION' && answer.trim()) {
+      payload.answer = answer.trim();
+    }
+
+    if (challenge.challenge_type === 'CODE' && code.trim()) {
+      payload.code = code.trim();
+    }
+
+    if (['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(challenge.challenge_type)) {
+      payload.selected_options = selectedOptions.map(Number);
+    }
 
     try {
       await api.post('/api/challenges/user-challenges/', payload);
       setSubmitted(true);
     } catch (err) {
       console.error('Erro ao submeter desafio:', err);
+      alert('Erro ao enviar o desafio. Verifique suas respostas e tente novamente.');
     }
   };
 

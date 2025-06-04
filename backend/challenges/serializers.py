@@ -1,13 +1,11 @@
 from rest_framework import serializers
 from .models import Track, Challenge, Question, Option, UserChallenge, UserTrackProgress
 
-# Option inline para perguntas com opções
 class OptionInlineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Option
         fields = ['id', 'text', 'is_correct', 'order']
 
-# Question com opções embutidas
 class QuestionWithOptionsSerializer(serializers.ModelSerializer):
     options = OptionInlineSerializer(many=True, read_only=True)
 
@@ -15,7 +13,6 @@ class QuestionWithOptionsSerializer(serializers.ModelSerializer):
         model = Question
         fields = ['id', 'text', 'order', 'options']
 
-# Challenge detalhado para GET /challenges/:id/
 class ChallengeDetailSerializer(serializers.ModelSerializer):
     questions = QuestionWithOptionsSerializer(many=True, read_only=True)
 
@@ -65,13 +62,16 @@ class TrackSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class UserChallengeSerializer(serializers.ModelSerializer):
-    challenge = ChallengeSerializer(read_only=True)
+    challenge = serializers.PrimaryKeyRelatedField(
+        queryset=Challenge.objects.all(), write_only=True
+    )
     selected_options = serializers.PrimaryKeyRelatedField(
         queryset=Option.objects.all(),
-        many=True
+        many=True,
+        required=False
     )
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    
+
     class Meta:
         model = UserChallenge
         fields = [
@@ -83,26 +83,45 @@ class UserChallengeSerializer(serializers.ModelSerializer):
             'user', 'submission_date', 'status', 'is_correct',
             'points_awarded', 'feedback', 'code_output', 'obtained_points'
         ]
-    
+
     def validate(self, data):
-        challenge = self.context.get('challenge')
-        
+        # Usa desafio do contexto ou payload
+        challenge = data.get('challenge') or self.context.get('challenge')
         if not challenge:
-            raise serializers.ValidationError("Desafio não encontrado")
-        
-        if challenge.challenge_type == "DESCRIPTION":
-            if not data.get('answer'):
-                raise serializers.ValidationError("Resposta descritiva é obrigatória")
-        elif challenge.challenge_type == "CODE":
-            if not data.get('code'):
-                raise serializers.ValidationError("Código é obrigatório")
-        elif challenge.challenge_type in ["SINGLE_CHOICE", "MULTIPLE_CHOICE"]:
-            selected_options = data.get('selected_options', [])
+            raise serializers.ValidationError("Desafio não informado ou inválido.")
+
+        challenge_type = challenge.challenge_type
+        selected_options = data.get('selected_options', [])
+        answer = data.get('answer', '')
+        code = data.get('code', '')
+
+        # Validação por tipo de desafio
+        if challenge_type == Challenge.TYPE_DESCRIPTION:
+            if not answer or not answer.strip():
+                raise serializers.ValidationError({
+                    "answer": "Resposta descritiva é obrigatória."
+                })
+
+        elif challenge_type == Challenge.TYPE_CODE:
+            if not code or not code.strip():
+                raise serializers.ValidationError({
+                    "code": "Código é obrigatório."
+                })
+
+        elif challenge_type in [Challenge.TYPE_SINGLE_CHOICE, Challenge.TYPE_MULTIPLE_CHOICE]:
             if not selected_options:
-                raise serializers.ValidationError("Selecione pelo menos uma opção")
-            if challenge.challenge_type == "SINGLE_CHOICE" and len(selected_options) > 1:
-                raise serializers.ValidationError("Este desafio permite apenas uma resposta")
-        
+                raise serializers.ValidationError({
+                    "selected_options": "Pelo menos uma opção deve ser selecionada."
+                })
+
+            if challenge_type == Challenge.TYPE_SINGLE_CHOICE and len(selected_options) > 1:
+                raise serializers.ValidationError({
+                    "selected_options": "Apenas uma opção deve ser selecionada neste desafio."
+                })
+
+        else:
+            raise serializers.ValidationError("Tipo de desafio não reconhecido.")
+
         return data
 
 class UserTrackProgressSerializer(serializers.ModelSerializer):

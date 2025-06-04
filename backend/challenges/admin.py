@@ -10,7 +10,6 @@ def safe_unregister(model):
     except admin.sites.NotRegistered:
         pass
 
-# Desregistra todos os modelos do app challenges (se já estiverem registrados)
 safe_unregister(Track)
 safe_unregister(Challenge)
 safe_unregister(Question)
@@ -18,9 +17,9 @@ safe_unregister(Option)
 safe_unregister(UserChallenge)
 safe_unregister(UserTrackProgress)
 
-# ======================================================
-# CLASSES INLINE
-# ======================================================
+# ====================
+# INLINES
+# ====================
 class OptionInline(admin.TabularInline):
     model = Option
     extra = 1
@@ -42,9 +41,9 @@ class ChallengeInline(admin.TabularInline):
     show_change_link = True
     ordering = ['order']
 
-# ======================================================
-# MODEL ADMIN CLASSES
-# ======================================================
+# ====================
+# MODEL ADMINS
+# ====================
 @admin.register(Track)
 class TrackAdmin(admin.ModelAdmin):
     list_display = ['title', 'is_active', 'order', 'created_at']
@@ -52,12 +51,8 @@ class TrackAdmin(admin.ModelAdmin):
     search_fields = ['title', 'description']
     inlines = [ChallengeInline]
     fieldsets = (
-        (None, {
-            'fields': ('title', 'description', 'icon', 'order')
-        }),
-        ('Status', {
-            'fields': ('is_active', 'created_at')
-        }),
+        (None, {'fields': ('title', 'description', 'icon', 'order')}),
+        ('Status', {'fields': ('is_active', 'created_at')}),
     )
     readonly_fields = ['created_at']
 
@@ -68,19 +63,13 @@ class ChallengeAdmin(admin.ModelAdmin):
     search_fields = ['title', 'description']
     inlines = [QuestionInline]
     fieldsets = (
-        (None, {
-            'fields': ('track', 'title', 'description', 'points', 'difficulty', 'challenge_type')
-        }),
+        (None, {'fields': ('track', 'title', 'description', 'points', 'difficulty', 'challenge_type')}),
         ('Configurações de Código', {
             'fields': ('language', 'starter_code', 'solution_code', 'expected_output'),
             'classes': ('collapse',)
         }),
-        ('Datas', {
-            'fields': ('start_date', 'end_date')
-        }),
-        ('Ordem e Status', {
-            'fields': ('order', 'is_active')
-        }),
+        ('Datas', {'fields': ('start_date', 'end_date')}),
+        ('Ordem e Status', {'fields': ('order', 'is_active')}),
     )
     ordering = ['track', 'order']
 
@@ -103,7 +92,7 @@ class OptionAdmin(admin.ModelAdmin):
 class UserChallengeAdmin(admin.ModelAdmin):
     list_display = ['user', 'challenge', 'status', 'is_correct', 'obtained_points', 'submitted_at', 'evaluated_at']
     list_filter = ['status', 'is_correct', 'challenge__track', 'challenge__difficulty']
-    readonly_fields = ['submitted_at', 'evaluated_at']
+    readonly_fields = ['submitted_at', 'evaluated_at', 'obtained_points']
     search_fields = ['user__username', 'challenge__title']
     list_select_related = ['user', 'challenge', 'challenge__track']
     actions = ['mark_as_correct', 'mark_as_incorrect', 'mark_as_partial']
@@ -127,60 +116,32 @@ class UserChallengeAdmin(admin.ModelAdmin):
         for obj in queryset:
             obj.status = 'CORRECT'
             obj.is_correct = True
-            obj.obtained_points = obj.challenge.points
             obj.evaluated_at = timezone.now()
             obj.save()
-            
-            obj.user.points += obj.challenge.points
-            obj.user.save()
-            
-            self.update_track_progress(obj.user, obj.challenge.track)
-        
         self.message_user(request, f"{queryset.count()} submissões marcadas como corretas")
     mark_as_correct.short_description = "Marcar como correto"
 
     def mark_as_incorrect(self, request, queryset):
-        updated = queryset.update(
-            status='INCORRECT',
-            is_correct=False,
-            obtained_points=0,
-            evaluated_at=timezone.now()
-        )
-        self.message_user(request, f"{updated} submissões marcadas como incorretas")
+        for obj in queryset:
+            obj.status = 'INCORRECT'
+            obj.is_correct = False
+            obj.evaluated_at = timezone.now()
+            obj.save()
+        self.message_user(request, f"{queryset.count()} submissões marcadas como incorretas")
     mark_as_incorrect.short_description = "Marcar como incorreto"
 
     def mark_as_partial(self, request, queryset):
         for obj in queryset:
             obj.status = 'PARTIAL'
             obj.is_correct = False
-            obj.obtained_points = obj.challenge.points // 2
             obj.evaluated_at = timezone.now()
             obj.save()
         self.message_user(request, f"{queryset.count()} submissões marcadas como parcialmente corretas")
     mark_as_partial.short_description = "Marcar como parcialmente correto"
 
-    def update_track_progress(self, user, track):
-        progress, created = UserTrackProgress.objects.get_or_create(
-            user=user,
-            track=track
-        )
-        
-        completed_challenges = UserChallenge.objects.filter(
-            user=user,
-            challenge__track=track,
-            is_correct=True
-        ).count()
-        
-        total_challenges = track.challenges.count()
-        
-        if completed_challenges >= total_challenges:
-            progress.is_completed = True
-            progress.completed_at = timezone.now()
-            progress.save()
-
     def has_add_permission(self, request):
         return False
-    
+
     def has_delete_permission(self, request, obj=None):
         return False
 
@@ -189,13 +150,13 @@ class UserTrackProgressAdmin(admin.ModelAdmin):
     list_display = ['user', 'track', 'progress_percentage', 'is_completed', 'completed_at']
     list_filter = ['track', 'is_completed']
     search_fields = ['user__username', 'track__title']
-    readonly_fields = ['completed_at']
+    readonly_fields = ['completed_challenges', 'completed_at', 'progress_percentage']
     list_select_related = ['user', 'track']
-    
+
     def progress_percentage(self, obj):
         total = obj.track.challenges.count()
         completed = obj.completed_challenges.count()
-        return f"{completed}/{total} ({completed/total*100:.0f}%)" if total > 0 else "0/0 (0%)"
+        return f"{completed}/{total} ({completed / total * 100:.0f}%)" if total > 0 else "0/0 (0%)"
     progress_percentage.short_description = "Progresso"
 
     def has_add_permission(self, request):
@@ -207,18 +168,13 @@ class UserTrackProgressAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-# ======================================================
-# ORDENAÇÃO PERSONALIZADA DO MENU ADMIN
-# ======================================================
-
-# Salvamos a implementação original
+# ====================
+# MENU CUSTOMIZADO
+# ====================
 original_get_app_list = admin.AdminSite.get_app_list
 
 def custom_get_app_list(self, request, app_label=None):
-    # Chamamos a implementação original
     app_list = original_get_app_list(self, request, app_label)
-    
-    # Definimos a ordem desejada dos modelos
     model_order = {
         'Track': 1,
         'Challenge': 2,
@@ -227,18 +183,13 @@ def custom_get_app_list(self, request, app_label=None):
         'UserChallenge': 5,
         'UserTrackProgress': 6,
     }
-    
-    # Aplicamos a ordenação apenas para o app 'challenges'
     for app in app_list:
         if app['app_label'] == 'challenges':
             app['models'].sort(key=lambda x: model_order.get(x['object_name'], 999))
-    
     return app_list
 
-# Substituímos a implementação original
 admin.AdminSite.get_app_list = custom_get_app_list
 
-# Configurações do Admin
 admin.site.site_header = "Administração do Sistema"
 admin.site.site_title = "Painel de Controle"
 admin.site.index_title = "Bem-vindo ao Painel de Administração"
